@@ -10,6 +10,24 @@ const contactForm = document.getElementById('contactForm');
     emailjs.init('7MLw7966JN9SHx0qy');
 })();
 
+// ===== Initialize Firebase =====
+// Replace with your Firebase configuration
+// Get your config from: https://console.firebase.google.com/
+const firebaseConfig = {
+  apiKey: "AIzaSyAvu7dErl3G6rORklo71wxzwO08Bh8Sf2I",
+  authDomain: "webly-reviews.firebaseapp.com",
+  databaseURL: "https://webly-reviews-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "webly-reviews",
+  storageBucket: "webly-reviews.firebasestorage.app",
+  messagingSenderId: "267442538821",
+  appId: "1:267442538821:web:82bcfc0c043075b6ce162c"
+};
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+const database = firebase.database();
+const reviewsRef = database.ref('reviews');
+
 // ===== Navbar Scroll Effect =====
 function handleNavbarScroll() {
     if (window.scrollY > 50) {
@@ -331,8 +349,6 @@ function initStarRating() {
 }
 
 function saveReview(name, rating, comment) {
-    const reviews = JSON.parse(localStorage.getItem('weblyReviews')) || [];
-    
     const newReview = {
         id: Date.now(),
         name: name,
@@ -341,63 +357,86 @@ function saveReview(name, rating, comment) {
         date: new Date().toISOString()
     };
     
-    reviews.unshift(newReview); // Add to beginning
+    // Save to Firebase
+    reviewsRef.push(newReview);
+    
+    // Also save to localStorage as backup
+    const reviews = JSON.parse(localStorage.getItem('weblyReviews')) || [];
+    reviews.unshift(newReview);
     localStorage.setItem('weblyReviews', JSON.stringify(reviews));
     
     return newReview;
 }
 
-// Load reviews from JSON file (for shared reviews)
-async function loadReviewsFromJSON() {
-    try {
-        const response = await fetch('reviews.json');
-        if (!response.ok) {
-            throw new Error('Failed to load reviews');
-        }
-        const data = await response.json();
-        return data.reviews || [];
-    } catch (error) {
-        console.log('Could not load reviews from JSON, using localStorage:', error);
-        return null;
-    }
-}
+// Reviews are now loaded from Firebase in real-time
+// No need for JSON file loading
 
-async function displayReviews() {
+function displayReviews() {
     const container = document.getElementById('reviewsContainer');
     const noReviewsMsg = document.getElementById('noReviews');
     
-    // Try to load reviews from JSON file first (shared reviews)
-    let reviews = await loadReviewsFromJSON();
-    
-    // If JSON load fails, fall back to localStorage
-    if (reviews === null) {
-        reviews = JSON.parse(localStorage.getItem('weblyReviews')) || [];
-    }
-    
-    if (reviews.length === 0) {
-        container.innerHTML = '';
-        noReviewsMsg.style.display = 'block';
-        return;
-    }
-    
-    noReviewsMsg.style.display = 'none';
-    container.innerHTML = reviews.map(review => `
-        <div class="testimonial-card">
-            <div class="testimonial-stars">
-                ${generateStars(review.rating)}
-            </div>
-            <p class="testimonial-text">"${escapeHtml(review.comment)}"</p>
-            <div class="testimonial-author">
-                <div class="author-avatar">
-                    <i class="fas fa-user"></i>
+    // Listen for reviews from Firebase in real-time
+    reviewsRef.orderByChild('date').on('value', (snapshot) => {
+        const reviews = [];
+        snapshot.forEach((childSnapshot) => {
+            reviews.unshift({
+                id: childSnapshot.key,
+                ...childSnapshot.val()
+            });
+        });
+        
+        if (reviews.length === 0) {
+            container.innerHTML = '';
+            noReviewsMsg.style.display = 'block';
+            return;
+        }
+        
+        noReviewsMsg.style.display = 'none';
+        container.innerHTML = reviews.map(review => `
+            <div class="testimonial-card">
+                <div class="testimonial-stars">
+                    ${generateStars(review.rating)}
                 </div>
-                <div class="author-info">
-                    <h4>${escapeHtml(review.name)}</h4>
-                    <p>${formatDate(review.date)}</p>
+                <p class="testimonial-text">"${escapeHtml(review.comment)}"</p>
+                <div class="testimonial-author">
+                    <div class="author-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="author-info">
+                        <h4>${escapeHtml(review.name)}</h4>
+                        <p>${formatDate(review.date)}</p>
+                    </div>
                 </div>
             </div>
-        </div>
-    `).join('');
+        `).join('');
+    }, (error) => {
+        console.error('Firebase error:', error);
+        // Fallback to localStorage if Firebase fails
+        const reviews = JSON.parse(localStorage.getItem('weblyReviews')) || [];
+        if (reviews.length > 0) {
+            noReviewsMsg.style.display = 'none';
+            container.innerHTML = reviews.map(review => `
+                <div class="testimonial-card">
+                    <div class="testimonial-stars">
+                        ${generateStars(review.rating)}
+                    </div>
+                    <p class="testimonial-text">"${escapeHtml(review.comment)}"</p>
+                    <div class="testimonial-author">
+                        <div class="author-avatar">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div class="author-info">
+                            <h4>${escapeHtml(review.name)}</h4>
+                            <p>${formatDate(review.date)}</p>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            container.innerHTML = '';
+            noReviewsMsg.style.display = 'block';
+        }
+    });
 }
 
 function generateStars(rating) {
@@ -430,11 +469,7 @@ function formatDate(dateString) {
 function initReviewForm() {
     const form = document.getElementById('reviewForm');
     
-    // Formspree endpoint - Replace with your actual Formspree form URL
-    // Get your free form at: https://formspree.io/
-    const FORMSPREE_ENDPOINT = 'https://formspree.io/f/xkoprqqd';
-    
-    form.addEventListener('submit', async function(e) {
+    form.addEventListener('submit', function(e) {
         e.preventDefault();
         
         const name = document.getElementById('reviewerName').value.trim();
@@ -446,37 +481,11 @@ function initReviewForm() {
             return;
         }
         
-        // Save to localStorage for immediate display
+        // Save review to Firebase (and localStorage as backup)
         saveReview(name, rating, comment);
         
-        // Submit to Formspree for storage
-        try {
-            const response = await fetch(FORMSPREE_ENDPOINT, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    name: name,
-                    rating: rating,
-                    comment: comment,
-                    date: new Date().toISOString(),
-                    _subject: `New Review from ${name} - ${rating} Stars`
-                })
-            });
-            
-            if (response.ok) {
-                showNotification('Thank you for your review! It will be visible after approval.', 'success');
-            } else {
-                showNotification('Review saved locally. Thank you!', 'success');
-            }
-        } catch (error) {
-            console.log('Formspree submission error:', error);
-            showNotification('Review saved locally. Thank you!', 'success');
-        }
-        
-        // Refresh reviews display
-        displayReviews();
+        // Show success message
+        showNotification('Thank you for your review! It will appear immediately for all visitors.', 'success');
         
         // Reset form
         form.reset();
