@@ -347,10 +347,32 @@ function saveReview(name, rating, comment) {
     return newReview;
 }
 
-function displayReviews() {
-    const reviews = JSON.parse(localStorage.getItem('weblyReviews')) || [];
+// Load reviews from JSON file (for shared reviews)
+async function loadReviewsFromJSON() {
+    try {
+        const response = await fetch('reviews.json');
+        if (!response.ok) {
+            throw new Error('Failed to load reviews');
+        }
+        const data = await response.json();
+        return data.reviews || [];
+    } catch (error) {
+        console.log('Could not load reviews from JSON, using localStorage:', error);
+        return null;
+    }
+}
+
+async function displayReviews() {
     const container = document.getElementById('reviewsContainer');
     const noReviewsMsg = document.getElementById('noReviews');
+    
+    // Try to load reviews from JSON file first (shared reviews)
+    let reviews = await loadReviewsFromJSON();
+    
+    // If JSON load fails, fall back to localStorage
+    if (reviews === null) {
+        reviews = JSON.parse(localStorage.getItem('weblyReviews')) || [];
+    }
     
     if (reviews.length === 0) {
         container.innerHTML = '';
@@ -408,7 +430,11 @@ function formatDate(dateString) {
 function initReviewForm() {
     const form = document.getElementById('reviewForm');
     
-    form.addEventListener('submit', function(e) {
+    // Formspree endpoint - Replace with your actual Formspree form URL
+    // Get your free form at: https://formspree.io/
+    const FORMSPREE_ENDPOINT = 'https://formspree.io/f/xkoprqqd';
+    
+    form.addEventListener('submit', async function(e) {
         e.preventDefault();
         
         const name = document.getElementById('reviewerName').value.trim();
@@ -420,16 +446,42 @@ function initReviewForm() {
             return;
         }
         
+        // Save to localStorage for immediate display
         saveReview(name, rating, comment);
+        
+        // Submit to Formspree for storage
+        try {
+            const response = await fetch(FORMSPREE_ENDPOINT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    name: name,
+                    rating: rating,
+                    comment: comment,
+                    date: new Date().toISOString(),
+                    _subject: `New Review from ${name} - ${rating} Stars`
+                })
+            });
+            
+            if (response.ok) {
+                showNotification('Thank you for your review! It will be visible after approval.', 'success');
+            } else {
+                showNotification('Review saved locally. Thank you!', 'success');
+            }
+        } catch (error) {
+            console.log('Formspree submission error:', error);
+            showNotification('Review saved locally. Thank you!', 'success');
+        }
+        
+        // Refresh reviews display
         displayReviews();
         
         // Reset form
         form.reset();
         document.querySelectorAll('#starRating i').forEach(s => s.classList.remove('active'));
         document.getElementById('ratingValue').value = '';
-        
-        // Show success message
-        showNotification('Thank you for your review!', 'success');
     });
 }
 
