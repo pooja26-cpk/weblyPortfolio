@@ -1,0 +1,25 @@
+{
+  "reviews": [
+    {
+      "id": 1,
+      "name": "Rajesh Kumar",
+      "rating": 5,
+      "comment": "Excellent work! Pooja delivered our bakery website in just 2 days. The design is beautiful and mobile-friendly. Highly recommended!",
+      "date": "2026-01-15T10:30:00.000Z"
+    },
+    {
+      "id": 2,
+      "name": "Priya Sharma",
+      "rating": 5,
+      "comment": "Very professional and responsive. Our gym website looks amazing and we're getting more inquiries now. Thank you Webly!",
+      "date": "2026-01-20T14:45:00.000Z"
+    },
+    {
+      "id": 3,
+      "name": "Arun Patel",
+      "rating": 4,
+      "comment": "Good quality work at affordable prices. The photography portfolio website turned out great. Will definitely work with Webly again.",
+      "date": "2026-02-05T09:15:00.000Z"
+    }
+  ]
+}
