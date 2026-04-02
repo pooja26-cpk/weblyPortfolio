@@ -469,8 +469,16 @@
         <div class="container">
             <h2 class="section-title">What Clients Say</h2>
             <p class="section-subtitle">What our clients say about working with us</p>
-            <div class="testimonials-grid" id="reviewsContainer">
-                <!-- Reviews will be dynamically loaded here -->
+            <div class="testimonials-scroll-wrapper">
+                <button class="scroll-btn scroll-left" id="scrollLeft" aria-label="Scroll left">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <div class="testimonials-scroll-container" id="reviewsContainer">
+                    <!-- Reviews will be dynamically loaded here -->
+                </div>
+                <button class="scroll-btn scroll-right" id="scrollRight" aria-label="Scroll right">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
             </div>
             <p class="no-reviews" id="noReviews" style="display: none;">
                 No reviews yet. Be the first to leave a review!
