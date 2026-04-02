@@ -374,6 +374,42 @@ function saveReview(name, rating, comment) {
 function displayReviews() {
     const container = document.getElementById('reviewsContainer');
     const noReviewsMsg = document.getElementById('noReviews');
+    const scrollLeftBtn = document.getElementById('scrollLeft');
+    const scrollRightBtn = document.getElementById('scrollRight');
+    
+    // Initialize scroll buttons
+    function initScrollButtons() {
+        if (!scrollLeftBtn || !scrollRightBtn || !container) return;
+        
+        const updateButtonStates = () => {
+            const scrollLeft = container.scrollLeft;
+            const maxScroll = container.scrollWidth - container.clientWidth;
+            
+            scrollLeftBtn.disabled = scrollLeft <= 0;
+            scrollRightBtn.disabled = scrollLeft >= maxScroll - 1;
+        };
+        
+        // Remove existing event listeners to avoid duplicates
+        scrollLeftBtn.replaceWith(scrollLeftBtn.cloneNode(true));
+        scrollRightBtn.replaceWith(scrollRightBtn.cloneNode(true));
+        
+        // Get fresh references after cloning
+        const newScrollLeftBtn = document.getElementById('scrollLeft');
+        const newScrollRightBtn = document.getElementById('scrollRight');
+        
+        newScrollLeftBtn.addEventListener('click', () => {
+            container.scrollBy({ left: -350, behavior: 'smooth' });
+        });
+        
+        newScrollRightBtn.addEventListener('click', () => {
+            container.scrollBy({ left: 350, behavior: 'smooth' });
+        });
+        
+        container.addEventListener('scroll', updateButtonStates);
+        
+        // Initial state
+        setTimeout(updateButtonStates, 100);
+    }
     
     // Listen for reviews from Firebase in real-time
     reviewsRef.orderByChild('date').on('value', (snapshot) => {
@@ -409,6 +445,9 @@ function displayReviews() {
                 </div>
             </div>
         `).join('');
+        
+        // Re-initialize scroll buttons after reviews are loaded
+        initScrollButtons();
     }, (error) => {
         console.error('Firebase error:', error);
         // Fallback to localStorage if Firebase fails
@@ -432,6 +471,9 @@ function displayReviews() {
                     </div>
                 </div>
             `).join('');
+            
+            // Re-initialize scroll buttons after reviews are loaded
+            initScrollButtons();
         } else {
             container.innerHTML = '';
             noReviewsMsg.style.display = 'block';
